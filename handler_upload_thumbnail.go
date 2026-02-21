@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"mime"
@@ -65,13 +63,13 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	video, err := cfg.db.GetVideo(videoID)
 
-	if video.UserID != userID {
-		respondWithError(w, http.StatusUnauthorized, "Unable to update this video", err)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get video", err)
 		return
 	}
 
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't get video", err)
+	if video.UserID != userID {
+		respondWithError(w, http.StatusUnauthorized, "Unable to update this video", err)
 		return
 	}
 
