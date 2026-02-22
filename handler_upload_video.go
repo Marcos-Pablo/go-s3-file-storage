@@ -94,13 +94,6 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err = tmpFile.Seek(0, io.SeekStart)
-
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Unable to reset temporary file pointer", err)
-		return
-	}
-
 	aspectRatio, err := getVideoAspectRatio(tmpFile.Name())
 
 	if err != nil {
@@ -108,12 +101,30 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	processedFilePath, err := processVideoForFastStart(tmpFile.Name())
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to process video for fast start", err)
+		return
+	}
+
+	defer os.Remove(processedFilePath)
+
+	processedFile, err := os.Open(processedFilePath)
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to open pre processed file", err)
+		return
+	}
+
+	defer processedFile.Close()
+
 	key := path.Join(aspectRatio, getAssetPath(mediaType))
 
 	cfg.s3Client.PutObject(r.Context(), &s3.PutObjectInput{
 		Bucket:      &cfg.s3Bucket,
 		Key:         &key,
-		Body:        tmpFile,
+		Body:        processedFile,
 		ContentType: &mediaType,
 	})
 
